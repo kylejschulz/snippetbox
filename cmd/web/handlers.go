@@ -3,7 +3,6 @@ package main
 import (
    	"errors"
 		"fmt"
-    "html/template"
     "net/http"
     "strconv"
 
@@ -24,30 +23,14 @@ func (app *application) home(w http.ResponseWriter, r *http.Request ) {
 	}
 
 
+	data := app.newTemplateData(r)
+	data.Snippets = snippets
 
-  files := []string{
-    "./ui/html/base.tmpl",
-    "./ui/html/pages/home.tmpl",
-    "./ui/html/partials/nav.tmpl",
-  }
+	// Pass the data to the render() helper as normal.
+	app.render(w, http.StatusOK, "home.tmpl", data)
 
-  ts, err := template.ParseFiles(files...)
-  if err != nil {
-    app.serverError(w, err)
-    return
-  }
-
-	// Create an instance of a templateData struct holding the slice of
-	// snippets.
-	data := &templateData{
-		Snippets: snippets,
-	}
-
-  err = ts.ExecuteTemplate(w,"base", data)
-  if err != nil {
-    app.serverError(w, err)
-  }
 }
+
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.URL.Query().Get("id"))
@@ -66,30 +49,11 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 				return
 		}
 
-		files := []string{
-				"./ui/html/base.tmpl",
-				"./ui/html/partials/nav.tmpl",
-				"./ui/html/pages/view.tmpl",
-		}
+		// And do the same thing again here...
+	data := app.newTemplateData(r)
+	data.Snippet = snippet
 
-		// Parse the template files...
-		ts, err := template.ParseFiles(files...)
-		if err != nil {
-				app.serverError(w, err)
-		return
-		}
-
-		// Create an instance of a templateData struct holding the snippet data.
-		data := &templateData{
-				Snippet: snippet,
-		}
-
-		// And then execute them. Notice how we are passing in the snippet
-		// data (a models.Snippet struct) as the final parameter?
-		err = ts.ExecuteTemplate(w, "base", data)
-		if err != nil {
-				app.serverError(w, err)
-		}
+	app.render(w, http.StatusOK, "view.tmpl", data)
 }
 
 

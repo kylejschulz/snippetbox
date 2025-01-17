@@ -4,6 +4,7 @@ import (
     "database/sql"
     "flag"
     "log"
+		"html/template"
     "net/http"
 	  "os"
 		"snippetbox.kyleschulz.net/internal/models"
@@ -15,6 +16,7 @@ type application struct {
     errorLog *log.Logger
     infoLog * log.Logger
 		snippets *models.SnippetModel
+		templateCache map[string]*template.Template
 }
 
 func main() {
@@ -39,11 +41,19 @@ func main() {
 		// before the main() function exits.
 		defer db.Close()
 
-    app := &application {
-        errorLog: errorLog,
-        infoLog: infoLog,
+		// Initialize a new template cache...
+		templateCache, err := newTemplateCache()
+		if err != nil {
+			errorLog.Fatal(err)
+		}
+
+		// And add it to the application dependencies.
+		app := &application{
+				errorLog: errorLog,
+				infoLog: infoLog,
 				snippets: &models.SnippetModel{DB: db},
-    }
+				templateCache: templateCache,
+		}
 
     srv := &http.Server{
         Addr: *addr,
