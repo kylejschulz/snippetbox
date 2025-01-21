@@ -7,8 +7,13 @@ import (
 		"html/template"
     "net/http"
 	  "os"
+		"time"
+
 		"snippetbox.kyleschulz.net/internal/models"
-		"github.com/go-playground/form/v4" // New import
+
+		"github.com/alexedwards/scs/mysqlstore"
+		"github.com/alexedwards/scs/v2"
+		"github.com/go-playground/form/v4"
     _ "github.com/go-sql-driver/mysql"
 )
 
@@ -18,6 +23,7 @@ type application struct {
 		snippets *models.SnippetModel
 		templateCache map[string]*template.Template
 		formDecoder *form.Decoder
+		sessionManager *scs.SessionManager
 }
 
 func main() {
@@ -30,33 +36,31 @@ func main() {
     infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
     errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-		// To keep the main() function tidy I've put the code for creating a connection
-		// pool into the separate openDB() function below. We pass openDB() the DSN
-		// from the command-line flag.
 		db, err := openDB(*dsn)
 		if err != nil {
 				errorLog.Fatal(err)
 		}
 
-		// We also defer a call to db.Close(), so that the connection pool is closed
-		// before the main() function exits.
 		defer db.Close()
 
-		// Initialize a new template cache...
 		templateCache, err := newTemplateCache()
 		if err != nil {
 			errorLog.Fatal(err)
 		}
-		// Initialize a decoder instance...
+
 		formDecoder := form.NewDecoder()
 
-		// And add it to the application dependencies.
+		sessionManager := scs.New()
+		sessionManager.Store = mysqlstore.New(db)
+		sessionManager.Lifetime = 12 * time.Hour
+
 		app := &application{
 			errorLog: errorLog,
 			infoLog: infoLog,
 			snippets: &models.SnippetModel{DB: db},
 			templateCache: templateCache,
 			formDecoder: formDecoder,
+			sessionManager: sessionManager,
 		}
 
 		srv := &http.Server{
